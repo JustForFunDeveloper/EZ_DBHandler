@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
+using EZ_DBHandler.DataBaseHandler.Access;
 using EZ_DBHandler.DataBaseHandler.SQLite;
 using TAGnology_Global_Library.DataBaseHandler;
 using TAGnology_Global_Library.DataBaseHandler.MySQL;
@@ -50,7 +51,8 @@ namespace EZ_DBHandler.DataBaseHandler
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
         SQLITE,
         MSSQL,
-        MYSQL
+        MYSQL,
+        ACCESS
 #pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
     }
 
@@ -70,6 +72,7 @@ namespace EZ_DBHandler.DataBaseHandler
         private Dictionary<string, Table> _tables;
         private DataBaseType _dataBaseType;
         private readonly string SQLiteFileExtension = ".db";
+        private readonly string AccessFileExtension = ".accdb";
 
         private Timer _dbStatusTimer;
         private bool _dbStatus = false;
@@ -727,6 +730,9 @@ namespace EZ_DBHandler.DataBaseHandler
                 case DataBaseType.MYSQL:
                     _fileExtension = "";
                     break;
+                case DataBaseType.ACCESS:
+                    _fileExtension = AccessFileExtension;
+                    break;
                 default:
                     throw new NotSupportedException("Wrong Database type!");
             }
@@ -762,6 +768,10 @@ namespace EZ_DBHandler.DataBaseHandler
                 case DataBaseType.MSSQL:
                     throw new NotSupportedException("MSSQL Database not implemented yet!");
                 case DataBaseType.MYSQL:
+                    if (dbPath.Equals(""))
+                        _dbPath = "localhost";
+                    break;
+                case DataBaseType.ACCESS:
                     break;
                 default:
                     throw new NotSupportedException("Wrong Database type!");
@@ -787,6 +797,9 @@ namespace EZ_DBHandler.DataBaseHandler
                     case DataBaseType.MYSQL:
                         ConnectToMySQL(createIfNotExists);
                         break;
+                    case DataBaseType.ACCESS:
+                        ConnectToAccess(createIfNotExists);
+                        break;
                     default:
                         throw new NotSupportedException("Wrong Database type!");
                 }
@@ -796,15 +809,6 @@ namespace EZ_DBHandler.DataBaseHandler
             {
                 throw e;
             }
-        }
-
-        /// <summary>
-        /// Checks the createIfNotExists flag and connects to the database.
-        /// </summary>
-        /// <param name="createIfNotExists">If true will create the database if it doesn't exist.</param>
-        private void ConnectToMySQL(bool createIfNotExists)
-        {
-            _abstractDBHandler = new MySQLHandler(_dbName, _dbPath, _user, _password, _port, createIfNotExists);
         }
 
         /// <summary>
@@ -824,6 +828,34 @@ namespace EZ_DBHandler.DataBaseHandler
                     throw new FileNotFoundException("Can't find file!");
 
             _abstractDBHandler = new SQLiteHandler(_dbName + _fileExtension, _dbPath);
+        }
+
+        /// <summary>
+        /// Checks the createIfNotExists flag and connects to the database.
+        /// </summary>
+        /// <param name="createIfNotExists">If true will create the database if it doesn't exist.</param>
+        private void ConnectToMySQL(bool createIfNotExists)
+        {
+            _abstractDBHandler = new MySQLHandler(_dbName, _dbPath, _user, _password, _port, createIfNotExists);
+        }
+
+        /// <summary>
+        /// Checks the createIfNotExists flag and connects to the database.
+        /// </summary>
+        /// <param name="createIfNotExists">If true will create the database if it doesn't exist.</param>
+        private void ConnectToAccess(bool createIfNotExists)
+        {
+            if (_dbPath.Equals(""))
+                _dbPath = Directory.GetCurrentDirectory();
+            else if (!Directory.Exists(_dbPath))
+                throw new DirectoryNotFoundException("Invalid path!");
+
+            string fullPath = _dbPath + "\\" + _dbName + _fileExtension;
+            if (!createIfNotExists)
+                if (!File.Exists(fullPath))
+                    throw new FileNotFoundException("Can't find file!");
+
+            _abstractDBHandler = new AccessHandler(_dbName + _fileExtension, _dbPath);
         }
 
         /// <summary>

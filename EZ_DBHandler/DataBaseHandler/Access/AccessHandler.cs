@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ADOX;
+using System;
 using System.Collections.Generic;
 using System.Data.OleDb;
 using System.IO;
@@ -12,7 +13,7 @@ namespace EZ_DBHandler.DataBaseHandler.Access
     {
         #region Private Members
         private string _connectionString;
-        private string _stringFormat = "yyyy-MM-dd HH:mm:ss.fff";
+        private string _stringFormat = "yyyy-MM-dd HH:mm:ss";
         private Thread FetchThread;
         private Boolean _cancelFetch;
         private Dictionary<string, Thread> _tableDeleteThreads = new Dictionary<string, Thread>();
@@ -60,10 +61,23 @@ namespace EZ_DBHandler.DataBaseHandler.Access
         /// <param name="connectionPath"></param>
         public override void ChangeConnectionString(string databaseName, string connectionPath)
         {
-            _connectionString =
-                @"Provider=Microsoft.Jet.OLEDB.4.0;" +
-                @"Data Source="+ connectionPath + "\\" + databaseName +
-                @"User Id=;Password=;";
+            try
+            {
+                _connectionString =
+                    @"Provider=Microsoft.Jet.OLEDB.4.0;" +
+                    @"Data Source=" + connectionPath + "\\" + databaseName + ";" +
+                    @"User Id=;Password=;";
+
+                if (!File.Exists(connectionPath + "\\" + databaseName))
+                {
+                    var cat = new Catalog();
+                    cat.Create(_connectionString);
+                }
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
         }
 
         /// <summary>
@@ -152,7 +166,6 @@ namespace EZ_DBHandler.DataBaseHandler.Access
         /// <param name="tables">All saved tables.</param>
         public override void InsertIntoTable(string tableName, Dictionary<string, Table> tables, List<List<object>> rows)
         {
-            // TODO: Check DataTypes and Query
             try
             {
                 List<string> queryList = new List<string>();
@@ -186,7 +199,7 @@ namespace EZ_DBHandler.DataBaseHandler.Access
                         else if (column.Value == typeof(DateTime))
                         {
                             DateTime convertTime = (DateTime)row[listIter];
-                            sqb.Apostrophe(sqb.AddValue(convertTime.ToString(_stringFormat)).Flush());
+                            sqb.Tags(sqb.AddValue(convertTime.ToString(_stringFormat)).Flush());
                         }
                         else
                             throw new NotSupportedException(column.Value.Name + " Datatype not supported");
@@ -418,6 +431,7 @@ namespace EZ_DBHandler.DataBaseHandler.Access
         public override void CheckDeleteTables(Dictionary<string, Table> tables)
         {
             // TODO: Check Query
+            // TODO: Rework GetCurrentRowsFromTable since there are no trigger in access
             try
             {
                 foreach (Table table in tables.Values)
@@ -750,7 +764,6 @@ namespace EZ_DBHandler.DataBaseHandler.Access
         /// <returns>Returns a list of queries to create the local tables.</returns>
         private List<string> CreateTableQueries(Dictionary<string, Table> tables)
         {
-            // TODO: Check Datatype and Query
             try
             {
                 List<string> tableQueries = new List<string>();
@@ -763,6 +776,15 @@ namespace EZ_DBHandler.DataBaseHandler.Access
                     foreach (KeyValuePair<string, Type> column in table.Value.Columns)
                     {
                         sqb.AddValue(column.Key);
+
+                        if (iter.Equals(0))
+                        {
+                            sqb.AddValue("AUTOINCREMENT").ParamPrimaryKey();
+                            paramList.Add(sqb.Flush());
+                            iter++;
+                            continue;
+                        }
+
                         if (column.Value == typeof(int))
                             sqb.TypeInteger();
                         else if (column.Value == typeof(string))
@@ -772,25 +794,22 @@ namespace EZ_DBHandler.DataBaseHandler.Access
                         else if (column.Value == typeof(float))
                             sqb.TypeReal();
                         else if (column.Value == typeof(DateTime))
-                            sqb.TypeText();
+                            sqb.TypeDateTime();
                         else
                             throw new NotSupportedException(column.Value.Name + " Datatype not supported");
 
-                        if (iter.Equals(0))
-                            sqb.ParamPrimaryKey();
-                        else
-                            sqb.ParamNot().Null();
+                        sqb.ParamNot().Null();
 
                         paramList.Add(sqb.Flush());
                         iter++;
                     }
                     string values = sqb.Brackets_Multiple(paramList, false).Flush();
-                    sqb.Create().Table().IfNotExists().AddValue(table.Value.TableName).AddValue(values);
+                    sqb.Create().Table().AddValue(table.Value.TableName).AddValue(values);
                     tableQueries.Add(sqb.ToString());
-                    tableQueries.Add(CreateTriggerTable(table.Value.TableName));
-                    tableQueries.Add(InsertStartValueTriggerTable(table.Value.TableName));
-                    tableQueries.Add(CreateCounterAddTriger(table.Value.TableName));
-                    tableQueries.Add(CreateCounterSubTriger(table.Value.TableName));
+                    //tableQueries.Add(CreateTriggerTable(table.Value.TableName));
+                    //tableQueries.Add(InsertStartValueTriggerTable(table.Value.TableName));
+                    //tableQueries.Add(CreateCounterAddTriger(table.Value.TableName));
+                    //tableQueries.Add(CreateCounterSubTriger(table.Value.TableName));
                 }
                 return tableQueries;
             }

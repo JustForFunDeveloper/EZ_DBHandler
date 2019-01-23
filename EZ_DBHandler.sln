@@ -5,6 +5,8 @@ VisualStudioVersion = 15.0.28307.271
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EZ_DBHandler", "EZ_DBHandler\EZ_DBHandler.csproj", "{C40B3F61-8C06-4657-B256-A688CF00ABBC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EZ_DBHandler.Example", "EZ_DBHandler.Example\EZ_DBHandler.Example.csproj", "{1914A1AA-8321-4E5D-A368-5913DBBB1C33}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{C40B3F61-8C06-4657-B256-A688CF00ABBC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C40B3F61-8C06-4657-B256-A688CF00ABBC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C40B3F61-8C06-4657-B256-A688CF00ABBC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1914A1AA-8321-4E5D-A368-5913DBBB1C33}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1914A1AA-8321-4E5D-A368-5913DBBB1C33}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1914A1AA-8321-4E5D-A368-5913DBBB1C33}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1914A1AA-8321-4E5D-A368-5913DBBB1C33}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

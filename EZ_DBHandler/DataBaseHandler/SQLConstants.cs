@@ -48,6 +48,7 @@
         public static string BRACKETS = "({0}) ";
         public static string COUNT = "COUNT({0}) ";
         public static string MAX = "MAX({0}) ";
+        public static string TAGS = "#{0}# ";
 
         public static string ALL = "* ";
         public static string AND = "AND ";

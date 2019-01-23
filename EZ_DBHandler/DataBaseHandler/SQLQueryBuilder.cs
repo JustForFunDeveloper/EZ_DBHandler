@@ -238,6 +238,15 @@ namespace EZ_DBHandler.DataBaseHandler
             return this;
         }
 
+
+        public SQLQueryBuilder Tags(String value)
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.AppendFormat(SQLConstants.TAGS, value);
+            _query += sb.ToString();
+            return this;
+        }
+
         public SQLQueryBuilder ApostropheDiag(String value)
         {
             StringBuilder sb = new StringBuilder();
