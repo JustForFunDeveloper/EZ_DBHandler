@@ -28,10 +28,10 @@ namespace EZ_DBHandler.Example.DataBaseHandler
 
                 // Basic Functions
                 //DropTablesExample();
-                InsertRowsExample("table3", 200);
+                //InsertRowsExample("table3", 200);
                 //GetRowByIDExample();
                 //GetLastRowExample();
-                //GetLastNRowsExample(5, true);
+                GetLastNRowsExample(5, true);
                 //GetLastNRowsExample(5, false);
                 //UpdateRowsExample();
 

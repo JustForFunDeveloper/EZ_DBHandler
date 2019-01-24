@@ -134,18 +134,14 @@ namespace EZ_DBHandler.DataBaseHandler.Access
         /// <param name="tableNames">A list of table names to delete.</param>
         public override void DropTables(List<string> tableNames)
         {
-            //TODO: Check Query
             try
             {
                 List<string> tableQueries = new List<string>();
                 foreach (var tableName in tableNames)
                 {
                     SQLQueryBuilder sqb = new SQLQueryBuilder();
-                    SQLQueryBuilder sqb_count = new SQLQueryBuilder();
                     sqb.DropTable().AddValue(tableName);
-                    sqb_count.DropTable().AddValue(tableName + "_count");
                     tableQueries.Add(sqb.ToString());
-                    tableQueries.Add(sqb_count.ToString());
                 }
                 CommitBatchQuery(tableQueries);
             }
@@ -229,7 +225,6 @@ namespace EZ_DBHandler.DataBaseHandler.Access
         /// <param name="rowsData">The rows with all column data which should be updated.</param>
         public override void UpdateTable(string tableName, List<Dictionary<string, Type>> rowsToUpdate, List<List<object>> rowsData)
         {
-            // TODO: Check DataTypes and Query
             try
             {
                 int rowIter = 0;
@@ -294,7 +289,7 @@ namespace EZ_DBHandler.DataBaseHandler.Access
         /// Get's the last n rows from the specified table.
         /// <para/>
         /// SQL query Example:<para/>
-        /// SELECT * FROM (SELECT * FROM name.table3 ORDER BY id DESC LIMIT 1) ORDER BY id ASC;
+        /// SELECT Top 10 * FROM table3 ORDER BY id DESC
         /// </summary>
         /// <param name="rows">number of the rows to display.</param>
         /// <param name="table">The table to get the values from.</param>
@@ -302,17 +297,14 @@ namespace EZ_DBHandler.DataBaseHandler.Access
         /// <returns></returns>
         public override List<List<object>> GetLastNRowsFromTable(Table table, int rows, bool ascending = true)
         {
-            // TODO: Check Query
             try
             {
                 SQLQueryBuilder sqb = new SQLQueryBuilder();
-                sqb.Select().ALL().From().AddValue(table.TableName).OrderBY().AddValue(table.Columns.First().Key).Desc().Limit().AddValue(rows.ToString());
 
                 if (ascending)
-                {
-                    string value = sqb.Flush();
-                    sqb.Select().ALL().From().Brackets(value).OrderBY().AddValue(table.Columns.First().Key).Asc();
-                }
+                    sqb.Select().Top().AddValue("5").ALL().From().AddValue(table.TableName).OrderBY().AddValue(table.Columns.First().Key).Asc();
+                else
+                    sqb.Select().Top().AddValue("5").ALL().From().AddValue(table.TableName).OrderBY().AddValue(table.Columns.First().Key).Desc();
 
                 List<List<object>> results = ReadQuery(sqb.ToString(), GenerateOutputValuesFromTable(table));
                 return results;
