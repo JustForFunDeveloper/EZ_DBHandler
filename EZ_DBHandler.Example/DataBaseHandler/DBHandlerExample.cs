@@ -27,7 +27,7 @@ namespace EZ_DBHandler.Example.DataBaseHandler
 
                 // Basic Functions
                 //DropTablesExample();
-                InsertRowsExample("table3", 100);
+                //InsertRowsExample("table3", 100);
                 //GetRowByIDExample();
                 //GetLastRowExample();
                 //GetLastNRowsExample(5, true);
@@ -42,8 +42,8 @@ namespace EZ_DBHandler.Example.DataBaseHandler
 
                 //DeleteLastNRowsExample("table3", 10);
                 //DeleteThreadExample();
-                Console.WriteLine(_dBHandler.GetCurrentRowsFromTable("table3"));
-                _dBHandler.StartDeleteThread(3000);
+                //Console.WriteLine(_dBHandler.GetCurrentRowsFromTable("table3"));
+                //_dBHandler.StartDeleteThread(3000);
             }
             catch (System.Exception ex)
             {

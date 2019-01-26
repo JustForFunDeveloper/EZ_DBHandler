@@ -1,6 +1,8 @@
 ﻿using ADOX;
 using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Data.Common;
 using System.Data.OleDb;
 using System.IO;
 using System.Linq;
@@ -73,6 +75,7 @@ namespace EZ_DBHandler.DataBaseHandler.Access
                     var cat = new Catalog();
                     cat.Create(_connectionString);
                 }
+                GetTablesfromDatabase();
             }
             catch (Exception e)
             {
@@ -855,6 +858,58 @@ namespace EZ_DBHandler.DataBaseHandler.Access
                 throw e;
             }
         }
+
+        private void GetTablesfromDatabase()
+        {
+            DbProviderFactory factory = DbProviderFactories.GetFactory("System.Data.OleDb");
+
+            using (DbConnection connection = factory.CreateConnection())
+            {
+                connection.ConnectionString = _connectionString;
+
+                connection.Open();
+
+                // First, get schema information of all the tables in current database;  
+                string[] Tablesrestrictions = new string[4];
+                Tablesrestrictions[3] = "Table";
+                DataTable allTablesSchemaTable = connection.GetSchema("Tables", Tablesrestrictions);
+
+                List<string> tableNames = new List<string>();
+                for (int i = 0; i < allTablesSchemaTable.Rows.Count; i++)
+                    tableNames.Add(allTablesSchemaTable.Rows[i][2].ToString());
+
+                foreach (var table in tableNames)
+                {
+                    string[] restrictions = new string[4];
+                    restrictions[2] = table;
+                    // First, get schema information of all the columns in current database.  
+                    DataTable allColumnsSchemaTable = connection.GetSchema("Columns", restrictions);
+
+                    Console.WriteLine("Schema Information of All Columns:");
+                    ShowColumns(allColumnsSchemaTable);
+                    Console.WriteLine();
+                }
+            }
+        }
         #endregion
+
+        private void ShowColumns(DataTable columnsTable)
+        {
+            var selectedRows = from info in columnsTable.AsEnumerable()
+                               select new
+                               {
+                                   TableName = info["TABLE_NAME"],
+                                   ColumnName = info["COLUMN_NAME"],
+                                   DataType = info["DATA_TYPE"],
+                                   OrdinalPosition = info["ORDINAL_POSITION"]
+                               };
+
+            Console.WriteLine("{0,-15}{1,-15}{2,-15}{3,-15}",
+                "TABLE_NAME", "COLUMN_NAME", "DATA_TYPE", "ORDINAL_POSITION");
+            foreach (var row in selectedRows)
+            {
+                Console.WriteLine("{0,-15}{1,-15}{2,-15}{3,-15}", row.TableName, row.ColumnName, (OleDbType)row.DataType, row.OrdinalPosition);
+            }
+        }
     }
 }
