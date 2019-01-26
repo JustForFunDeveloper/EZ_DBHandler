@@ -15,23 +15,22 @@ namespace EZ_DBHandler.Example.DataBaseHandler
         {
             try
             {
-                // Startup Routine -> create DB and add Tables
                 //CreateDataBaseExample("", DataBaseType.SQLITE);
                 CreateDataBaseExampleWithoutTables(DataBaseType.ACCESS);
                 //CreateMySQLDataBaseExample(DataBaseType.MYSQL);
                 //CreateCustomDataTypeExample();
                 _dBHandler.ExceptionEvent += OnExceptionEvent;
-                //_dBHandler.StartDeleteThread(3000);
+                _dBHandler.DeleteEvent += OnDeleteEvent;
 
                 AddTablesExample();
                 //AddTableExample();
 
                 // Basic Functions
                 //DropTablesExample();
-                //InsertRowsExample("table3", 200);
+                InsertRowsExample("table3", 100);
                 //GetRowByIDExample();
                 //GetLastRowExample();
-                GetLastNRowsExample(5, true);
+                //GetLastNRowsExample(5, true);
                 //GetLastNRowsExample(5, false);
                 //UpdateRowsExample();
 
@@ -43,15 +42,21 @@ namespace EZ_DBHandler.Example.DataBaseHandler
 
                 //DeleteLastNRowsExample("table3", 10);
                 //DeleteThreadExample();
+                Console.WriteLine(_dBHandler.GetCurrentRowsFromTable("table3"));
+                _dBHandler.StartDeleteThread(3000);
             }
             catch (System.Exception ex)
             {
                 Console.WriteLine(ex.ToString());
             }
-            GC.Collect();
             Console.WriteLine("Finished!");
             Console.ReadLine();
             _dBHandler.DisposeDBHandler();
+        }
+
+        private void OnDeleteEvent(object sender, string e)
+        {
+            Console.WriteLine("OnDeleteEvent: " + e);
         }
 
         private void CreateCustomDataTypeExample()
@@ -148,8 +153,8 @@ namespace EZ_DBHandler.Example.DataBaseHandler
                 {
                     { "id" , typeof(int) },
                     { "Name", typeof(string) },
-                    { "_Date", typeof(DateTime) },
-                    { "_value", typeof(double) }
+                    { "Datum", typeof(DateTime) },
+                    { "Wert", typeof(double) }
                 },
                 100));
         }
@@ -164,8 +169,8 @@ namespace EZ_DBHandler.Example.DataBaseHandler
                         {
                             { "id" , typeof(int) },
                             { "Name", typeof(string) },
-                            { "_Date", typeof(DateTime) },
-                            { "_value", typeof(double) }
+                            { "Datum", typeof(DateTime) },
+                            { "Wert", typeof(double) }
                         },
                         100),
                     new Table(
@@ -188,8 +193,8 @@ namespace EZ_DBHandler.Example.DataBaseHandler
                         {
                             { "id" , typeof(int) },
                             { "Name", typeof(string) },
-                            { "_Date", typeof(DateTime) },
-                            { "_value", typeof(double) }
+                            { "Datum", typeof(DateTime) },
+                            { "Wert", typeof(double) }
                         },
                     new Dictionary<string, Type>()
                         {
@@ -286,10 +291,10 @@ namespace EZ_DBHandler.Example.DataBaseHandler
 
         private void GetRowsFromTableWithTimeExample(bool ascending)
         {
-            string from = "2019-01-07 16:07:47";
-            string until = "2019-01-07 16:23:36";
+            string from = "2019-01-26 12:10:28";
+            string until = "2019-01-26 14:10:28";
 
-            List<List<object>> resultList2 = _dBHandler.GetRowsFromTableWithTime("table3", "_Date", DateTime.Parse(from), DateTime.Parse(until), ascending);
+            List<List<object>> resultList2 = _dBHandler.GetRowsFromTableWithTime("table3", "Datum", DateTime.Parse(from), DateTime.Parse(until), ascending);
 
             foreach (var itemList in resultList2)
             {

@@ -127,8 +127,6 @@ namespace EZ_DBHandler.DataBaseHandler.Access
 
         /// <summary>
         /// Drops the tables with the given table names.
-        /// <para/>
-        /// SQL query Example: <para/>
         /// DROP TABLE table1
         /// </summary>
         /// <param name="tableNames">A list of table names to delete.</param>
@@ -154,8 +152,6 @@ namespace EZ_DBHandler.DataBaseHandler.Access
         /// <summary>
         /// Inserts the given objects into the given table. The first object "id" is ignored due to the auto increment,
         /// <para/>
-        /// SQL query Example: <para/>
-        /// INSERT INTO table3 (Name, Date, value) VALUES ('John Doe', '2018-12-06 12:01:16.767', 22.5);
         /// </summary>
         /// <param name="tableName">The name of the table to insert rows to.</param>
         /// <param name="rows">A list of rows with all column objects to insert.</param>
@@ -288,8 +284,6 @@ namespace EZ_DBHandler.DataBaseHandler.Access
         /// <summary>
         /// Get's the last n rows from the specified table.
         /// <para/>
-        /// SQL query Example:<para/>
-        /// SELECT Top 10 * FROM table3 ORDER BY id DESC
         /// </summary>
         /// <param name="rows">number of the rows to display.</param>
         /// <param name="table">The table to get the values from.</param>
@@ -318,8 +312,6 @@ namespace EZ_DBHandler.DataBaseHandler.Access
         /// <summary>
         /// Gets all rows in the given DateTime slot.
         /// <para/>
-        /// SQL query Example: <para/>
-        /// select * from table3 where Date >= "2018-12-06 11:10:32.632" and Date -= "2018-12-06 12:05:57.526";
         /// </summary>
         /// <param name="table">The name of the table to get the data from.</param>
         /// <param name="DateTimeColumnName">The name of the column with the DateTime values.</param>
@@ -329,12 +321,11 @@ namespace EZ_DBHandler.DataBaseHandler.Access
         /// <returns></returns>
         public override List<List<object>> GetRowsFromTableWithTime(Table table, string DateTimeColumnName, DateTime from, DateTime until, bool ascending = true)
         {
-            // TODO: Check Query
             try
             {
                 SQLQueryBuilder sqb = new SQLQueryBuilder();
-                string stringFrom = sqb.Apostrophe(from.ToString(_stringFormat)).Flush();
-                string stringUntil = sqb.Apostrophe(until.ToString(_stringFormat)).Flush();
+                string stringFrom = sqb.Tags(from.ToString(_stringFormat)).Flush();
+                string stringUntil = sqb.Tags(until.ToString(_stringFormat)).Flush();
 
                 sqb.Select().ALL().From().AddValue(table.TableName).Where().AddValue(DateTimeColumnName);
                 sqb.GreaterThen().AddValue(stringFrom).AND().AddValue(DateTimeColumnName).LesserThen().AddValue(stringUntil);
@@ -354,8 +345,6 @@ namespace EZ_DBHandler.DataBaseHandler.Access
         /// <summary>
         /// Gets all rows in the given id slot.
         /// <para/>
-        /// SQL query Example: <para/>
-        /// SELECT * from table3 where id >= 0 and id -= 1
         /// </summary>
         /// <param name="table"></param>
         /// <param name="start"></param>
@@ -364,7 +353,6 @@ namespace EZ_DBHandler.DataBaseHandler.Access
         /// <returns></returns>
         public override List<List<object>> GetRowsFromTableWithIndex(Table table, int start, int end, bool ascending = true)
         {
-            // TODO: Check Query
             try
             {
                 SQLQueryBuilder sqb = new SQLQueryBuilder();
@@ -395,8 +383,8 @@ namespace EZ_DBHandler.DataBaseHandler.Access
             {
                 SQLQueryBuilder sqb = new SQLQueryBuilder();
                 string columnName = table.Columns.First().Key;
-                string param = sqb.Select().AddValue(columnName).From().AddValue(table.TableName).OrderBY().
-                    AddValue(columnName).Asc().Limit().AddValue(rows.ToString()).Flush();
+                string param = sqb.Select().Top().AddValue(rows.ToString()).AddValue(columnName).From().AddValue(table.TableName)
+                    .OrderBY().AddValue(columnName).Desc().Flush();
                 sqb.Delete().From().AddValue(table.TableName).Where().AddValue(columnName).In().Brackets(param);
 
                 CommitQuery(sqb.ToString());
@@ -422,8 +410,6 @@ namespace EZ_DBHandler.DataBaseHandler.Access
         /// <param name="tables">All saved tables.</param>
         public override void CheckDeleteTables(Dictionary<string, Table> tables)
         {
-            // TODO: Check Query
-            // TODO: Rework GetCurrentRowsFromTable since there are no trigger in access
             try
             {
                 foreach (Table table in tables.Values)
@@ -453,13 +439,13 @@ namespace EZ_DBHandler.DataBaseHandler.Access
 
                             amountToDelete -= rows;
 
-                            SQLQueryBuilder deleteQuery = new SQLQueryBuilder();
+                            SQLQueryBuilder sqb = new SQLQueryBuilder();
                             string columnName = table.Columns.First().Key;
-                            string param = deleteQuery.Select().AddValue(columnName).From().AddValue(table.TableName).OrderBY().
-                                AddValue(columnName).Asc().Limit().AddValue(rows.ToString()).Flush();
-                            deleteQuery.Delete().From().AddValue(table.TableName).Where().AddValue(columnName).In().Brackets(param);
+                            string param = sqb.Select().Top().AddValue(rows.ToString()).AddValue(columnName).From().AddValue(table.TableName)
+                                .OrderBY().AddValue(columnName).Desc().Flush();
+                            sqb.Delete().From().AddValue(table.TableName).Where().AddValue(columnName).In().Brackets(param);
 
-                            CommitQuery(deleteQuery.ToString());
+                            CommitQuery(sqb.ToString());
                             Thread.Sleep(5000);
                         }
                         OnDeleteEvent("Finished the Deletion of the table: " + table.TableName);
@@ -473,17 +459,17 @@ namespace EZ_DBHandler.DataBaseHandler.Access
         }
 
         /// <summary>
-        /// Gets the current rows from the table. Since this is accomplished with a trigger table its just a small querie.
+        /// Gets the current rows from the table. There are no triggers in access so i had to do it with the count method.
         /// </summary>
         /// <param name="table">The table to get the current rows from.</param>
         /// <returns>Returns the number of rows in the given table</returns>
         public override int GetCurrentRowsFromTable(Table table)
         {
-            // TODO: Check Query
             try
             {
                 SQLQueryBuilder sqb = new SQLQueryBuilder();
-                sqb.Select().AddValue("rowCount").From().AddValue(table.TableName + "_count").Where().AddValue("id").Equal().AddValue("1");
+                string columnName = table.Columns.First().Key;
+                sqb.Select().AddValue("Count(" + columnName + ")").From().AddValue(table.TableName);
                 List<List<object>> result = ReadQuery(sqb.ToString(),
                     new List<KeyValuePair<int, Type>>()
                     {
@@ -538,15 +524,15 @@ namespace EZ_DBHandler.DataBaseHandler.Access
         /// <returns></returns>
         public override List<List<object>> ReadQuery(string query, List<KeyValuePair<int, Type>> columns)
         {
-            // TODO: Check DataTypes
             try
             {
                 using (OleDbConnection oleDbConnection = new OleDbConnection(_connectionString))
                 {
-                    oleDbConnection.Open();
                     using (var cmd = new OleDbCommand(query, oleDbConnection))
                     {
-                        using (var rdr = cmd.ExecuteReader())
+                        cmd.Connection = oleDbConnection;
+                        oleDbConnection.Open();
+                        using (OleDbDataReader rdr = cmd.ExecuteReader())
                         {
                             List<List<object>> result = new List<List<object>>();
                             while (rdr.Read())
@@ -559,7 +545,7 @@ namespace EZ_DBHandler.DataBaseHandler.Access
                                     else if (column.Value == typeof(string))
                                         row.Add(rdr.GetString(column.Key));
                                     else if (column.Value == typeof(double))
-                                        row.Add(rdr.GetDouble(column.Key));
+                                        row.Add(rdr.GetFloat(column.Key));
                                     else if (column.Value == typeof(float))
                                         row.Add(rdr.GetFloat(column.Key));
                                     else if (column.Value == typeof(DateTime))
@@ -569,6 +555,7 @@ namespace EZ_DBHandler.DataBaseHandler.Access
                                 }
                                 result.Add(row);
                             }
+                            rdr.Close();
                             oleDbConnection.Close();
                             return result;
                         }
@@ -590,7 +577,6 @@ namespace EZ_DBHandler.DataBaseHandler.Access
         /// <param name="fetchsize">The fetch size defines the length of the list which is sent through an event.</param>
         public override void FetchQuery(string query, List<KeyValuePair<int, Type>> columns, int fetchsize)
         {
-            // TODO: Check DataTypes
             _cancelFetch = false;
             FetchThread = new Thread(() =>
             {
@@ -598,9 +584,10 @@ namespace EZ_DBHandler.DataBaseHandler.Access
                 {
                     using (OleDbConnection oleDbConnection = new OleDbConnection(_connectionString))
                     {
-                        oleDbConnection.Open();
                         using (var cmd = new OleDbCommand(query, oleDbConnection))
                         {
+                            cmd.Connection = oleDbConnection;
+                            oleDbConnection.Open();
                             using (var rdr = cmd.ExecuteReader())
                             {
                                 List<List<object>> result = new List<List<object>>();
@@ -638,6 +625,7 @@ namespace EZ_DBHandler.DataBaseHandler.Access
                                     currentFetchSize++;
                                 }
                                 OnFetch(new FetchArgs(result));
+                                rdr.Close();
                             }
                         }
                         oleDbConnection.Close();
@@ -750,8 +738,6 @@ namespace EZ_DBHandler.DataBaseHandler.Access
         /// <summary>
         /// Generates a querie list to create tables.
         /// <para/>
-        /// SQL query Example: <para/>
-        /// CREATE TABLE table1 (id INTEGER PRIMARY KEY, firstColumn TEXT NOT NULL, secondColumn REAL NOT NULL)
         /// </summary>
         /// <returns>Returns a list of queries to create the local tables.</returns>
         private List<string> CreateTableQueries(Dictionary<string, Table> tables)
@@ -798,112 +784,8 @@ namespace EZ_DBHandler.DataBaseHandler.Access
                     string values = sqb.Brackets_Multiple(paramList, false).Flush();
                     sqb.Create().Table().AddValue(table.Value.TableName).AddValue(values);
                     tableQueries.Add(sqb.ToString());
-                    //tableQueries.Add(CreateTriggerTable(table.Value.TableName));
-                    //tableQueries.Add(InsertStartValueTriggerTable(table.Value.TableName));
-                    //tableQueries.Add(CreateCounterAddTriger(table.Value.TableName));
-                    //tableQueries.Add(CreateCounterSubTriger(table.Value.TableName));
                 }
                 return tableQueries;
-            }
-            catch (Exception e)
-            {
-                throw e;
-            }
-        }
-
-        /// <summary>
-        /// Creates the trigger table where the row count is automatically update through a custom insert and delete trigger.
-        /// <para/>
-        /// SQL query Example: <para/>
-        /// create table if not exists tableName_count (id integer primary key, number int);
-        /// </summary>
-        /// <param name="tableName">The name of the table.</param>
-        /// <returns>The finished sql string.</returns>
-        private string CreateTriggerTable(string tableName)
-        {
-            // TODO: Check Query
-            try
-            {
-                SQLQueryBuilder sqb = new SQLQueryBuilder();
-                string param = sqb.Brackets(sqb.AddValue("id").TypeInteger().ParamPrimaryKey().Comma().AddValue("rowCount").TypeInteger().Flush()).Flush();
-                sqb.Create().Table().IfNotExists().AddValue(tableName + "_count").AddValue(param);
-                return sqb.ToString();
-            }
-            catch (Exception e)
-            {
-                throw e;
-            }
-        }
-
-        /// <summary>
-        /// Inserts the first and only row of this table. Bascially its set's the rowCOunt to 0.
-        /// <para/>
-        /// SQL query Example: <para/>
-        /// insert into table1Count (rowCount) values (0);
-        /// </summary>
-        /// <param name="tableName">The name of the table.</param>
-        /// <returns>The finished sql string.</returns>
-        private string InsertStartValueTriggerTable(string tableName)
-        {
-            // TODO: Check Query
-            try
-            {
-                SQLQueryBuilder sqb = new SQLQueryBuilder();
-                string param = sqb.AddValue("id").Comma().AddValue("rowCount").Flush();
-                sqb.Insert().Or().Ignore().Into().AddValue(tableName + "_count").Brackets(param).Values().Brackets("1, 0");
-                return sqb.ToString();
-            }
-            catch (Exception e)
-            {
-                throw e;
-            }
-        }
-
-        /// <summary>
-        /// Creates the insert trigger to keep track of the row count.
-        /// Basically every insert command adds +1 to the row count.
-        /// <para/>
-        /// SQL query Example: <para/>
-        /// create trigger if not exists table_trigger_add after insert on table BEGIN update table_count set rowCount = rowCount + 1 where id = 1; END
-        /// </summary>
-        /// <param name="tableName">The name of the table.</param>
-        /// <returns>The finished sql string.</returns>
-        private string CreateCounterAddTriger(string tableName)
-        {
-            // TODO: Check Query
-            try
-            {
-                SQLQueryBuilder sqb = new SQLQueryBuilder();
-                sqb.Create().Trigger().IfNotExists().AddValue(tableName + "_trigger_add").After().Insert().On().AddValue(tableName);
-                sqb.Begin().Update().AddValue(tableName + "_count").Set().AddValue("rowCount").Equal().AddValue("rowCount + 1");
-                sqb.Where().AddValue("id").Equal().AddValue("1").CommaPoint(true).End();
-                return sqb.ToString();
-            }
-            catch (Exception e)
-            {
-                throw e;
-            }
-        }
-
-        /// <summary>
-        /// Creates the delete trigger to keep track of the row count.
-        /// Basically every delete command subtracts +1 to the row count.
-        /// <para/>
-        /// SQL query Example: <para/>
-        /// create trigger if not exists table_trigger_sub after delete on table BEGIN update table_count set rowCount = rowCount - 1 where id = 1; END
-        /// </summary>
-        /// <param name="tableName">The name of the table.</param>
-        /// <returns>The finished sql string.</returns>
-        private string CreateCounterSubTriger(string tableName)
-        {
-            // TODO: Check Query
-            try
-            {
-                SQLQueryBuilder sqb = new SQLQueryBuilder();
-                sqb.Create().Trigger().IfNotExists().AddValue(tableName + "_trigger_sub").After().Delete().On().AddValue(tableName);
-                sqb.Begin().Update().AddValue(tableName + "_count").Set().AddValue("rowCount").Equal().AddValue("rowCount - 1");
-                sqb.Where().AddValue("id").Equal().AddValue("1").CommaPoint(true).End();
-                return sqb.ToString();
             }
             catch (Exception e)
             {
