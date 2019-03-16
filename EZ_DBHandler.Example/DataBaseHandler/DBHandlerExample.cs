@@ -17,7 +17,7 @@ namespace EZ_DBHandler.Example.DataBaseHandler
             {
                 // Startup Routine -> create DB and add Tables
                 //CreateDataBaseExample("", DataBaseType.SQLITE);
-                CreateDataBaseExampleWithoutTables(DataBaseType.ACCESS);
+                CreateDataBaseExampleWithoutTables(DataBaseType.MYSQL);
                 //CreateMySQLDataBaseExample(DataBaseType.MYSQL);
                 //CreateCustomDataTypeExample();
                 _dBHandler.ExceptionEvent += OnExceptionEvent;
