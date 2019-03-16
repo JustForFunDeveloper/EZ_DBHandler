@@ -32,6 +32,7 @@
         public static string ON = "ON ";
         public static string OR = "OR ";
         public static string ORDER_BY = "ORDER BY ";
+        public static string REFERENCES = "REFERENCES ";
         public static string SELECT = "SELECT ";
         public static string SET = "SET ";
         public static string SHOW = "SHOW ";

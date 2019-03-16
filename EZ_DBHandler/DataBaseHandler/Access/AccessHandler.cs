@@ -1,5 +1,6 @@
 ﻿using ADOX;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
@@ -7,7 +8,6 @@ using System.Data.OleDb;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using TAGnology_Global_Library.DataBaseHandler;
 
 namespace EZ_DBHandler.DataBaseHandler.Access
 {
@@ -100,7 +100,7 @@ namespace EZ_DBHandler.DataBaseHandler.Access
         /// Creates all saved tables in the database.
         /// </summary>
         /// <param name="tables"></param>
-        public override void CreateTables(Dictionary<string, Table> tables)
+        public override void CreateTables(ConcurrentDictionary<string, Table> tables)
         {
             try
             {
@@ -116,7 +116,7 @@ namespace EZ_DBHandler.DataBaseHandler.Access
         /// Adds tables and creates them at the given database.
         /// </summary>
         /// <param name="tables">A list of tables to add to the database.</param>
-        public override void AddTables(Dictionary<string, Table> tables)
+        public override void AddTables(ConcurrentDictionary<string, Table> tables)
         {
             try
             {
@@ -159,7 +159,7 @@ namespace EZ_DBHandler.DataBaseHandler.Access
         /// <param name="tableName">The name of the table to insert rows to.</param>
         /// <param name="rows">A list of rows with all column objects to insert.</param>
         /// <param name="tables">All saved tables.</param>
-        public override void InsertIntoTable(string tableName, Dictionary<string, Table> tables, List<List<object>> rows)
+        public override void InsertIntoTable(string tableName, ConcurrentDictionary<string, Table> tables, List<List<object>> rows)
         {
             try
             {
@@ -411,7 +411,7 @@ namespace EZ_DBHandler.DataBaseHandler.Access
         /// So this should be enough time to delete all entries with plenty of time in between for other sources to write to the database.
         /// </summary>
         /// <param name="tables">All saved tables.</param>
-        public override void CheckDeleteTables(Dictionary<string, Table> tables)
+        public override void CheckDeleteTables(ConcurrentDictionary<string, Table> tables)
         {
             try
             {
@@ -743,7 +743,7 @@ namespace EZ_DBHandler.DataBaseHandler.Access
         /// <para/>
         /// </summary>
         /// <returns>Returns a list of queries to create the local tables.</returns>
-        private List<string> CreateTableQueries(Dictionary<string, Table> tables)
+        private List<string> CreateTableQueries(ConcurrentDictionary<string, Table> tables)
         {
             try
             {

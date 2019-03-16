@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace TAGnology_Global_Library.DataBaseHandler.MySQL.CustomDataTypes
+namespace EZ_DBHandler.DataBaseHandler.MySQL.CustomDataTypes
 {
     /// <summary>
     /// This class represents the MySQL Datatype LONGTEXT

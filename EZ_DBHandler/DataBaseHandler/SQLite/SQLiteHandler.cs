@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data.SQLite;
 using System.IO;
@@ -24,6 +25,8 @@ namespace EZ_DBHandler.DataBaseHandler.SQLite
         /// This value is used to stop the thread after every fetch and wait for the mrse.Set() command.
         /// </summary>
         private ManualResetEvent mrse = new ManualResetEvent(false);
+
+        private readonly object _connectionLock = new object();
         #endregion
 
         #region Event Members
@@ -49,9 +52,9 @@ namespace EZ_DBHandler.DataBaseHandler.SQLite
             {
                 ChangeConnectionString(databaseName, connectionPath);
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
         #endregion
@@ -64,7 +67,17 @@ namespace EZ_DBHandler.DataBaseHandler.SQLite
         /// <param name="connectionPath"></param>
         public override void ChangeConnectionString(string databaseName, string connectionPath)
         {
-            _connectionString = "Data Source = " + connectionPath + "\\" + databaseName + "; Version = 3;";
+            try
+            {
+                lock (_connectionLock)
+                {
+                    _connectionString = "Data Source = " + connectionPath + "\\" + databaseName + "; Version = 3;";
+                }
+            }
+            catch (Exception)
+            {
+                throw;
+            }
         }
 
         /// <summary>
@@ -84,15 +97,15 @@ namespace EZ_DBHandler.DataBaseHandler.SQLite
         /// Creates all saved tables in the database.
         /// </summary>
         /// <param name="tables"></param>
-        public override void CreateTables(Dictionary<string, Table> tables)
+        public override void CreateTables(ConcurrentDictionary<string, Table> tables)
         {
             try
             {
                 CommitBatchQuery(CreateTableQueries(tables));
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -100,15 +113,15 @@ namespace EZ_DBHandler.DataBaseHandler.SQLite
         /// Adds tables and creates them at the given database.
         /// </summary>
         /// <param name="tables">A list of tables to add to the database.</param>
-        public override void AddTables(Dictionary<string, Table> tables)
+        public override void AddTables(ConcurrentDictionary<string, Table> tables)
         {
             try
             {
                 CommitBatchQuery(CreateTableQueries(tables));
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -135,9 +148,9 @@ namespace EZ_DBHandler.DataBaseHandler.SQLite
                 }
                 CommitBatchQuery(tableQueries);
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -150,7 +163,7 @@ namespace EZ_DBHandler.DataBaseHandler.SQLite
         /// <param name="tableName">The name of the table to insert rows to.</param>
         /// <param name="rows">A list of rows with all column objects to insert.</param>
         /// <param name="tables">All saved tables.</param>
-        public override void InsertIntoTable(string tableName, Dictionary<string, Table> tables, List<List<object>> rows)
+        public override void InsertIntoTable(string tableName, ConcurrentDictionary<string, Table> tables, List<List<object>> rows)
         {
             try
             {
@@ -200,9 +213,9 @@ namespace EZ_DBHandler.DataBaseHandler.SQLite
                 }
                 CommitBatchQuery(queryList);
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -269,9 +282,9 @@ namespace EZ_DBHandler.DataBaseHandler.SQLite
                 }
                 CommitBatchQuery(queryList);
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -301,9 +314,9 @@ namespace EZ_DBHandler.DataBaseHandler.SQLite
                 List<List<object>> results = ReadQuery(sqb.ToString(), GenerateOutputValuesFromTable(table));
                 return results;
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -336,9 +349,9 @@ namespace EZ_DBHandler.DataBaseHandler.SQLite
                 List<List<object>> results = ReadQuery(sqb.ToString(), GenerateOutputValuesFromTable(table));
                 return results;
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -367,9 +380,9 @@ namespace EZ_DBHandler.DataBaseHandler.SQLite
                 List<List<object>> results = ReadQuery(sqb.ToString(), GenerateOutputValuesFromTable(table));
                 return results;
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -390,9 +403,9 @@ namespace EZ_DBHandler.DataBaseHandler.SQLite
 
                 CommitQuery(sqb.ToString());
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -409,7 +422,7 @@ namespace EZ_DBHandler.DataBaseHandler.SQLite
         /// So this should be enough time to delete all entries with plenty of time in between for other sources to write to the database.
         /// </summary>
         /// <param name="tables">All saved tables.</param>
-        public override void CheckDeleteTables(Dictionary<string, Table> tables)
+        public override void CheckDeleteTables(ConcurrentDictionary<string, Table> tables)
         {
             try
             {
@@ -453,9 +466,9 @@ namespace EZ_DBHandler.DataBaseHandler.SQLite
                     }
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -481,9 +494,9 @@ namespace EZ_DBHandler.DataBaseHandler.SQLite
                 else
                     return (int)result[0][0];
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -507,9 +520,9 @@ namespace EZ_DBHandler.DataBaseHandler.SQLite
                     sQLiteConnection.Close();
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -560,9 +573,9 @@ namespace EZ_DBHandler.DataBaseHandler.SQLite
                     }
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -627,9 +640,9 @@ namespace EZ_DBHandler.DataBaseHandler.SQLite
                         sQLiteConnection.Close();
                     }
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
-                    throw e;
+                    throw;
                 }
             });
             FetchThread.Start();
@@ -644,9 +657,9 @@ namespace EZ_DBHandler.DataBaseHandler.SQLite
             {
                 mrse.Set();
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -684,9 +697,9 @@ namespace EZ_DBHandler.DataBaseHandler.SQLite
                     sQLiteConnection.Close();
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -722,7 +735,7 @@ namespace EZ_DBHandler.DataBaseHandler.SQLite
         /// CREATE TABLE table1 (id INTEGER PRIMARY KEY, firstColumn TEXT NOT NULL, secondColumn REAL NOT NULL)
         /// </summary>
         /// <returns>Returns a list of queries to create the local tables.</returns>
-        private List<string> CreateTableQueries(Dictionary<string, Table> tables)
+        private List<string> CreateTableQueries(ConcurrentDictionary<string, Table> tables)
         {
             try
             {
@@ -767,9 +780,9 @@ namespace EZ_DBHandler.DataBaseHandler.SQLite
                 }
                 return tableQueries;
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -790,9 +803,9 @@ namespace EZ_DBHandler.DataBaseHandler.SQLite
                 sqb.Create().Table().IfNotExists().AddValue(tableName + "_count").AddValue(param);
                 return sqb.ToString();
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -813,9 +826,9 @@ namespace EZ_DBHandler.DataBaseHandler.SQLite
                 sqb.Insert().Or().Ignore().Into().AddValue(tableName + "_count").Brackets(param).Values().Brackets("1, 0");
                 return sqb.ToString();
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -838,9 +851,9 @@ namespace EZ_DBHandler.DataBaseHandler.SQLite
                 sqb.Where().AddValue("id").Equal().AddValue("1").CommaPoint(true).End();
                 return sqb.ToString();
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -863,9 +876,9 @@ namespace EZ_DBHandler.DataBaseHandler.SQLite
                 sqb.Where().AddValue("id").Equal().AddValue("1").CommaPoint(true).End();
                 return sqb.ToString();
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -891,9 +904,9 @@ namespace EZ_DBHandler.DataBaseHandler.SQLite
 
                 return columnsToGet;
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
         #endregion
@@ -911,9 +924,9 @@ namespace EZ_DBHandler.DataBaseHandler.SQLite
                 FetchEvent?.Invoke(this, e);
                 return 0;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                throw ex;
+                throw;
             }
         }
         /// <summary>
@@ -926,9 +939,9 @@ namespace EZ_DBHandler.DataBaseHandler.SQLite
             {
                 DeleteEvent?.Invoke(this, text);
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
         #endregion

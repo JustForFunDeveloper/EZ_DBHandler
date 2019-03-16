@@ -1,13 +1,14 @@
-﻿using System;
+﻿using EZ_DBHandler.DataBaseHandler.Access;
+using EZ_DBHandler.DataBaseHandler.MySQL;
+using EZ_DBHandler.DataBaseHandler.SQLite;
+using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading;
-using EZ_DBHandler.DataBaseHandler.Access;
-using EZ_DBHandler.DataBaseHandler.SQLite;
-using TAGnology_Global_Library.DataBaseHandler;
-using TAGnology_Global_Library.DataBaseHandler.MySQL;
 
 namespace EZ_DBHandler.DataBaseHandler
 {
@@ -41,6 +42,52 @@ namespace EZ_DBHandler.DataBaseHandler
             Columns = columns;
             MaxRows = maxRows;
         }
+
+        /// <summary>
+        /// Createas the columns from the given classType.
+        /// </summary>
+        /// <param name="classType"></param>
+        /// <param name="maxRows"></param>
+        /// <param name="hasBufferedTable"></param>
+        public Table(Type classType, long maxRows, bool hasBufferedTable = false)
+        {
+            TableName = classType.Name;
+            Columns = CreateTableFromDataModel(classType);
+            MaxRows = maxRows;
+        }
+
+        /// <summary>
+        /// Creates the Columns from the classType.
+        /// </summary>
+        /// <param name="classType"></param>
+        /// <returns>Returns all columns created from the classType.</returns>
+        private Dictionary<string, Type> CreateTableFromDataModel(Type classType)
+        {
+            try
+            {
+                Dictionary<string, Type> columns = new Dictionary<string, Type>();
+
+                //check if properties are available, if not use class fields
+                PropertyInfo[] properties = classType.GetProperties();
+                if (properties.Length > 0)
+                {
+                    foreach (PropertyInfo property in properties)
+                        columns.Add(property.Name, property.PropertyType);
+                }
+                else
+                {
+                    FieldInfo[] fields = classType.GetFields();
+                    foreach (FieldInfo field in fields)
+                        columns.Add(field.Name, field.FieldType);
+                }
+
+                return columns;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
     }
 
     /// <summary>
@@ -58,6 +105,18 @@ namespace EZ_DBHandler.DataBaseHandler
 
     /// <summary>
     /// An easy to use DBHandler class which allows to choose between multiple Database Types.
+    /// Features:  
+    /// -> Automatic Trigger Tables to hold a count for all rows in the table.
+    /// -> Automatic creation of the database and tables based on the given Tables.
+    /// -> Easy to use queries with the SQLQueryBuilder.
+    /// -> Added basic MultiThread functionality
+    /// 
+    /// TODO: Not implemented / Future Features?:
+    /// -> Indexes not used at the moment.
+    /// -> Linq instead of SQLQueryBuilder.
+    /// -> Entity Framework.
+    /// -> Fetch isn't probably Thread Safe yet!
+    /// -> Parametrized Queries to be safe from sql injection.
     /// </summary>
     public class DBHandler
     {
@@ -69,7 +128,7 @@ namespace EZ_DBHandler.DataBaseHandler
         private string _user;
         private string _password;
         private string _port;
-        private Dictionary<string, Table> _tables;
+        private ConcurrentDictionary<string, Table> _tables;
         private DataBaseType _dataBaseType;
         private readonly string SQLiteFileExtension = ".db";
         private readonly string AccessFileExtension = ".accdb";
@@ -154,7 +213,7 @@ namespace EZ_DBHandler.DataBaseHandler
         /// <summary>
         /// A Dictionary of tables whch should be created in the database if necessary.
         /// </summary>
-        public Dictionary<string, Table> Tables { get => _tables; }
+        public ConcurrentDictionary<string, Table> Tables { get => _tables; }
         /// <summary>
         /// The current database type.
         /// </summary>
@@ -241,13 +300,13 @@ namespace EZ_DBHandler.DataBaseHandler
                 _user = "root";
                 _password = "root";
                 _port = "3306";
-                _tables = new Dictionary<string, Table>();
+                _tables = new ConcurrentDictionary<string, Table>();
 
                 ConnectToDatabase(DataBaseType, createIfNotExists);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                throw ex;
+                throw;
             }
         }
 
@@ -274,13 +333,13 @@ namespace EZ_DBHandler.DataBaseHandler
                 _password = password;
                 _port = port;
                 _dataBaseType = dataBaseType;
-                _tables = new Dictionary<string, Table>();
+                _tables = new ConcurrentDictionary<string, Table>();
 
                 ConnectToDatabase(DataBaseType, createIfNotExists);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                throw ex;
+                throw;
             }
         }
 
@@ -303,7 +362,12 @@ namespace EZ_DBHandler.DataBaseHandler
                 CheckDbPath(dbPath, dataBaseType);
                 _dbName = dbName;
                 _dbPath = dbPath;
-                _tables = tables.ToDictionary(t => t.TableName);
+                _tables = new ConcurrentDictionary<string, Table>();
+                foreach (var table in tables)
+                {
+                    if (!_tables.TryAdd(table.TableName, table))
+                        throw new MemberAccessException("Couldn't add table: " + table.TableName);
+                }
                 _dataBaseType = dataBaseType;
 
                 // Set standard values
@@ -314,9 +378,9 @@ namespace EZ_DBHandler.DataBaseHandler
                 ConnectToDatabase(DataBaseType, createIfNotExists);
                 _abstractDBHandler.CreateTables(_tables);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                throw ex;
+                throw;
             }
         }
 
@@ -325,16 +389,20 @@ namespace EZ_DBHandler.DataBaseHandler
         /// Multiple tables for a better performance should be created  with the <see cref="AddTables(List{Table})"/> method.
         /// </summary>
         /// <param name="table">The table to add to the database.</param>
-        public void AddTable(Table table)
+        /// <returns>False if the function wasn't succesfull.</returns>
+        public bool AddTable(Table table)
         {
             try
             {
-                _tables.Add(table.TableName, table);
+                if (!_tables.TryAdd(table.TableName, table))
+                    throw new MemberAccessException("Couldn't add table: " + table.TableName);
                 _abstractDBHandler.AddTables(_tables);
+                return true;
             }
             catch (Exception e)
             {
                 OnExceptionEvent(e);
+                return false;
             }
         }
 
@@ -342,19 +410,23 @@ namespace EZ_DBHandler.DataBaseHandler
         /// Adds tables and creates them at the given database.
         /// </summary>
         /// <param name="tables">A list of tables to add to the database.</param>
-        public void AddTables(List<Table> tables)
+        /// <returns>False if the function wasn't succesfull.</returns>
+        public bool AddTables(List<Table> tables)
         {
             try
             {
                 foreach (Table table in tables)
                 {
-                    _tables.Add(table.TableName, table);
+                    if (!_tables.TryAdd(table.TableName, table))
+                        throw new MemberAccessException("Couldn't add table: " + table.TableName);
                 }
                 _abstractDBHandler.AddTables(_tables);
+                return true;
             }
             catch (Exception e)
             {
                 OnExceptionEvent(e);
+                return false;
             }
         }
 
@@ -362,7 +434,8 @@ namespace EZ_DBHandler.DataBaseHandler
         /// Drops the tables with the given table names.
         /// </summary>
         /// <param name="tableNames">A list of table names to delete.</param>
-        public void DropTables(List<string> tableNames)
+        /// <returns>False if the function wasn't succesfull.</returns>
+        public bool DropTables(List<string> tableNames)
         {
             try
             {
@@ -373,13 +446,16 @@ namespace EZ_DBHandler.DataBaseHandler
                 }
                 foreach (var tableName in tableNames)
                 {
-                    _tables.Remove(tableName);
+                    if (!_tables.TryRemove(tableName, out Table table))
+                        throw new MemberAccessException("Couldn't remove table: " + table.TableName);
                 }
                 _abstractDBHandler.DropTables(tableNames);
+                return true;
             }
             catch (Exception e)
             {
                 OnExceptionEvent(e);
+                return false;
             }
         }
 
@@ -388,7 +464,8 @@ namespace EZ_DBHandler.DataBaseHandler
         /// </summary>
         /// <param name="tableName">The name of the table to insert rows to.</param>
         /// <param name="rows">A list of rows with all column objects to insert.</param>
-        public void InsertIntoTable(string tableName, List<List<object>> rows)
+        /// <returns>False if the function wasn't succesfull.</returns>
+        public bool InsertIntoTable(string tableName, List<List<object>> rows)
         {
             try
             {
@@ -398,10 +475,12 @@ namespace EZ_DBHandler.DataBaseHandler
                     throw new InvalidDataException("Table row size doesn't fit with the given table");
 
                 _abstractDBHandler.InsertIntoTable(tableName, _tables, rows);
+                return true;
             }
             catch (Exception e)
             {
                 OnExceptionEvent(e);
+                return false;
             }
         }
 
@@ -412,7 +491,8 @@ namespace EZ_DBHandler.DataBaseHandler
         /// <param name="tableName">The table where rows should be updated.</param>
         /// <param name="rowsToUpdate">The rows with the name and data type to update.</param>
         /// <param name="rowsData">The rows with all column data which should be updated.</param>
-        public void UpdateTable(string tableName, List<Dictionary<string, Type>> rowsToUpdate, List<List<object>> rowsData)
+        /// <returns>False if the function wasn't succesfull.</returns>
+        public bool UpdateTable(string tableName, List<Dictionary<string, Type>> rowsToUpdate, List<List<object>> rowsData)
         {
             try
             {
@@ -423,10 +503,12 @@ namespace EZ_DBHandler.DataBaseHandler
                     throw new InvalidDataException("rowsToUpdate size does'nt match rowsData size");
 
                 _abstractDBHandler.UpdateTable(tableName, rowsToUpdate, rowsData);
+                return true;
             }
             catch (Exception e)
             {
                 OnExceptionEvent(e);
+                return false;
             }
         }
 
@@ -435,7 +517,7 @@ namespace EZ_DBHandler.DataBaseHandler
         /// </summary>
         /// <param name="tableName">The table name to get the row from.</param>
         /// <param name="rowId">The rowId to get the data from.</param>
-        /// <returns>returns the specified row in a list otherwise empty List.</returns>
+        /// <returns>returns the specified row in a list otherwise empty List. Null if an error occured.</returns>
         public List<object> GetRowById(string tableName, int rowId)
         {
             try
@@ -457,7 +539,7 @@ namespace EZ_DBHandler.DataBaseHandler
         /// Get's the last row from the specified table.
         /// </summary>
         /// <param name="tableName">The table name to get the data from.</param>
-        /// <returns>returns the last row in a list otherwise null.</returns>
+        /// <returns>returns the last row in a list otherwise an empty list. Null if an error occured.</returns>
         public List<object> GetLastRowFromTable(string tableName)
         {
             try
@@ -481,7 +563,7 @@ namespace EZ_DBHandler.DataBaseHandler
         /// <param name="tableName">The table name to get the data from.</param>
         /// <param name="rows">number of the rows to display.</param>
         /// <param name="ascending">Ascending or descending by first param.</param>
-        /// <returns>returns the data in rows and in columns otherwise null.</returns>
+        /// <returns>returns the data in rows and in columns otherwise an empty list. Null if an error occured.</returns>
         public List<List<object>> GetLastNRowsFromTable(string tableName, int rows = 100, bool ascending = true)
         {
             try
@@ -509,7 +591,7 @@ namespace EZ_DBHandler.DataBaseHandler
         /// <param name="from">A DateTime object with the beginning of the timeslot.</param>
         /// <param name="until">A DateTime object with the end of the timeslot.</param>
         /// <param name="ascending">Ascending or descending by DateTimeColumn param.</param>
-        /// <returns>returns the data in rows and in columns otherwise null.</returns>
+        /// <returns>returns the data in rows and in columns otherwise an empty list. Null if an error occured.</returns>
         public List<List<object>> GetRowsFromTableWithTime(string tableName, string DateTimeColumnName, DateTime from, DateTime until, bool ascending = true)
         {
             try
@@ -538,7 +620,7 @@ namespace EZ_DBHandler.DataBaseHandler
         /// <param name="start"></param>
         /// <param name="end"></param>
         /// <param name="ascending">Ascending or descending by first param.</param>
-        /// <returns>returns the data in rows and in columns otherwise null.</returns>
+        /// <returns>returns the data in rows and in columns otherwise an empty list. Null if an error occured.</returns>
         public List<List<object>> GetRowsFromTableWithIndex(string tableName, int start, int end, bool ascending = true)
         {
             try
@@ -562,7 +644,8 @@ namespace EZ_DBHandler.DataBaseHandler
         /// </summary>
         /// <param name="tableName">The name of the table to delete the last n data from.</param>
         /// <param name="rows">The amount of data to delete.</param>
-        public void DeleteLastNRows(string tableName, int rows)
+        /// <returns>False if the function wasn't succesfull.</returns>
+        public bool DeleteLastNRows(string tableName, int rows)
         {
             try
             {
@@ -573,36 +656,42 @@ namespace EZ_DBHandler.DataBaseHandler
                     throw new InvalidDataException("rows max size: " + _abstractDBHandler.MaxDeleteRowSize);
 
                 _abstractDBHandler.DeleteLastNRows(_tables[tableName], rows);
+                return true;
             }
             catch (Exception e)
             {
                 OnExceptionEvent(e);
+                return false;
             }
         }
 
         /// <summary>
         /// Every x millis the CheckDeleteTables will be called and checked if the MaxRows value of the database was passed and a deletion will be started if necessary.
         /// </summary>
-        /// <param name="millis">The interval of the check in hours.</param>
-        public void StartDeleteThread(int millis)
+        /// <param name="millis">The interval of the check in milliseconds.</param>
+        /// <returns>False if the function wasn't succesfull.</returns>
+        public bool StartDeleteThread(int millis)
         {
             try
             {
                 _dbDeleteIntervall = millis;
                 if (_tables.Count <= 0)
                     throw new IndexOutOfRangeException("No Tables to check");
-                _dbDeleteTimer = new Timer(OnDeleteCallback, null, _dbDeleteIntervall, Timeout.Infinite);
+                _dbDeleteTimer = new Timer(OnDeleteCallback, null, 60000, Timeout.Infinite);
+                return true;
             }
             catch (Exception e)
             {
                 OnExceptionEvent(e);
+                return false;
             }
         }
 
         /// <summary>
         /// Stops the delete timer and all active threads.
         /// </summary>
-        public void StopDeleteThread()
+        /// <returns>False if the function wasn't succesfull.</returns>
+        public bool StopDeleteThread()
         {
             try
             {
@@ -611,10 +700,12 @@ namespace EZ_DBHandler.DataBaseHandler
                     _dbDeleteTimer.Dispose();
                     _dbDeleteTimer = null;
                 }
+                return true;
             }
             catch (Exception e)
             {
                 OnExceptionEvent(e);
+                return false;
             }
         }
 
@@ -633,6 +724,38 @@ namespace EZ_DBHandler.DataBaseHandler
             {
                 OnExceptionEvent(e);
                 return -1;
+            }
+        }
+
+        /// <summary>
+        /// Gets all Columns of the specific table and returns the KeyValuePair representation.
+        /// </summary>
+        /// <param name="tableName"></param>
+        /// <returns>Returns the KeyValue Representation of all columns. Otherwise null.</returns>
+        public List<KeyValuePair<int, Type>> GetAllColumnsFromTable(string tableName)
+        {
+            try
+            {
+                if (_tables.TryGetValue(tableName, out Table table))
+                {
+                    List<KeyValuePair<int, Type>> columns = new List<KeyValuePair<int, Type>>();
+                    int iter = 0;
+                    foreach (var item in table.Columns.Values)
+                    {
+                        columns.Add(new KeyValuePair<int, Type>(iter, item));
+                        iter++;
+                    }
+                    return columns;
+                }
+                else
+                {
+                    return null;
+                }
+            }
+            catch (Exception e)
+            {
+                OnExceptionEvent(e);
+                return null;
             }
         }
 
@@ -805,10 +928,19 @@ namespace EZ_DBHandler.DataBaseHandler
                 }
                 StartStatusTimer(_dbStatusIntervall);
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
+        }
+
+        /// <summary>
+        /// Checks the createIfNotExists flag and connects to the database.
+        /// </summary>
+        /// <param name="createIfNotExists">If true will create the database if it doesn't exist.</param>
+        private void ConnectToMySQL(bool createIfNotExists)
+        {
+            _abstractDBHandler = new MySQLHandler(_dbName, _dbPath, _user, _password, _port, createIfNotExists);
         }
 
         /// <summary>
@@ -828,15 +960,6 @@ namespace EZ_DBHandler.DataBaseHandler
                     throw new FileNotFoundException("Can't find file!");
 
             _abstractDBHandler = new SQLiteHandler(_dbName + _fileExtension, _dbPath);
-        }
-
-        /// <summary>
-        /// Checks the createIfNotExists flag and connects to the database.
-        /// </summary>
-        /// <param name="createIfNotExists">If true will create the database if it doesn't exist.</param>
-        private void ConnectToMySQL(bool createIfNotExists)
-        {
-            _abstractDBHandler = new MySQLHandler(_dbName, _dbPath, _user, _password, _port, createIfNotExists);
         }
 
         /// <summary>
@@ -922,6 +1045,7 @@ namespace EZ_DBHandler.DataBaseHandler
             catch (Exception e)
             {
                 OnExceptionEvent(e);
+                _dbDeleteTimer.Change(_dbDeleteIntervall, Timeout.Infinite);
             }
         }
 
@@ -959,7 +1083,7 @@ namespace EZ_DBHandler.DataBaseHandler
         protected virtual void OnExceptionEvent(Exception e)
         {
             //For Unit Testing activate this
-            //throw e;
+            //throw;
             ExceptionEvent?.Invoke(this, e);
         }
 

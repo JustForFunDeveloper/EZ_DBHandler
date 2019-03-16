@@ -1,9 +1,8 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Threading;
-using EZ_DBHandler.DataBaseHandler;
 
-namespace TAGnology_Global_Library.DataBaseHandler
+namespace EZ_DBHandler.DataBaseHandler
 {
     /// <summary>
     /// This is the abstract base class for all DBHandler
@@ -38,13 +37,13 @@ namespace TAGnology_Global_Library.DataBaseHandler
         /// Creates all saved tables in the database.
         /// </summary>
         /// <param name="tables"></param>
-        public abstract void CreateTables(Dictionary<string, Table> tables);
+        public abstract void CreateTables(ConcurrentDictionary<string, Table> tables);
 
         /// <summary>
         /// Adds tables and creates them at the given database.
         /// </summary>
         /// <param name="tables">A list of tables to add to the database.</param>
-        public abstract void AddTables(Dictionary<string, Table> tables);
+        public abstract void AddTables(ConcurrentDictionary<string, Table> tables);
 
         /// <summary>
         /// Drops the tables with the given table names.
@@ -58,7 +57,7 @@ namespace TAGnology_Global_Library.DataBaseHandler
         /// <param name="tableName">The name of the table to insert rows to.</param>
         /// <param name="rows">A list of rows with all column objects to insert.</param>
         /// <param name="tables">All saved tables.</param>
-        public abstract void InsertIntoTable(string tableName, Dictionary<string, Table> tables, List<List<object>> rows);
+        public abstract void InsertIntoTable(string tableName, ConcurrentDictionary<string, Table> tables, List<List<object>> rows);
 
         /// <summary>
         /// Updates the given columns with the given id in the first column.
@@ -119,7 +118,7 @@ namespace TAGnology_Global_Library.DataBaseHandler
         /// So this should be enough time to delete all entries with plenty of time in between for other sources to write to the database.
         /// </summary>
         /// <param name="tables">All saved tables.</param>
-        public abstract void CheckDeleteTables(Dictionary<string, Table> tables);
+        public abstract void CheckDeleteTables(ConcurrentDictionary<string, Table> tables);
 
         /// <summary>
         /// Gets the current rows from the table. Since this is accomplished with a trigger table its just a small querie.

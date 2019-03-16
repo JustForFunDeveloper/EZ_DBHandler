@@ -11,7 +11,12 @@ namespace EZ_DBHandler.DataBaseHandler
     /// </summary>
     public class SQLQueryBuilder
     {
-        private String _query = "";
+        private string _query = "";
+
+        /// <summary>
+        /// Gets the current stored query.
+        /// </summary>
+        public string Query { get => _query;}
 
         #region SQLite commands implementations
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
@@ -167,6 +172,12 @@ namespace EZ_DBHandler.DataBaseHandler
         public SQLQueryBuilder OrderBY()
         {
             _query += SQLConstants.ORDER_BY;
+            return this;
+        }
+
+        public SQLQueryBuilder References()
+        {
+            _query += SQLConstants.REFERENCES;
             return this;
         }
 
@@ -349,9 +360,9 @@ namespace EZ_DBHandler.DataBaseHandler
                 _query += SQLConstants.COMMA;
                 return this;
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 

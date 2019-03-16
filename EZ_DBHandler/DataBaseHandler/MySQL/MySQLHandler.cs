@@ -1,13 +1,12 @@
 ﻿using MySql.Data.MySqlClient;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using EZ_DBHandler.DataBaseHandler;
-using TAGnology_Global_Library.DataBaseHandler.MySQL.CustomDataTypes;
 
-namespace TAGnology_Global_Library.DataBaseHandler.MySQL
+namespace EZ_DBHandler.DataBaseHandler.MySQL
 {
     /// <summary>
     /// This class creates a connection to the MySQL database which is given within the connectionString in the constructor.
@@ -36,11 +35,12 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
         private string _stringFormat = "yyyy-MM-dd HH:mm:ss.fff";
         private Thread FetchThread;
         private Boolean _cancelFetch;
-        private Dictionary<string, Thread> _tableDeleteThreads = new Dictionary<string, Thread>();
         /// <summary>
         /// This value is used to stop the thread after every fetch and wait for the mrse.Set() command.
         /// </summary>
         private ManualResetEvent mrse = new ManualResetEvent(false);
+
+        private readonly object _connectionLock = new object();
         #endregion
 
         #region Event Members
@@ -93,9 +93,9 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
                     }
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -120,23 +120,33 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
         /// <param name="port"></param>
         public override void ChangeConnectionString(string databaseName, string connectionPath, string user, string password, string port)
         {
-            _dataBaseName = databaseName;
-            _connectionString = "server=" + connectionPath + ";user=" + user + ";database=" + databaseName + ";port=" + port + ";password=" + password;
+            try
+            {
+                lock (_connectionLock)
+                {
+                    _dataBaseName = databaseName;
+                    _connectionString = "server=" + connectionPath + ";user=" + user + ";database=" + databaseName + ";port=" + port + ";password=" + password;
+                }
+            }
+            catch (Exception)
+            {
+                throw;
+            }
         }
 
         /// <summary>
         /// Creates all saved tables in the database.
         /// </summary>
         /// <param name="tables"></param>
-        public override void CreateTables(Dictionary<string, Table> tables)
+        public override void CreateTables(ConcurrentDictionary<string, Table> tables)
         {
             try
             {
                 CommitBatchQuery(CreateTableQueries(tables));
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -144,15 +154,15 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
         /// Adds tables and creates them at the given database.
         /// </summary>
         /// <param name="tables">A list of tables to add to the database.</param>
-        public override void AddTables(Dictionary<string, Table> tables)
+        public override void AddTables(ConcurrentDictionary<string, Table> tables)
         {
             try
             {
                 CommitBatchQuery(CreateTableQueries(tables));
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -180,9 +190,9 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
                 }
                 CommitBatchQuery(tableQueries);
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -195,7 +205,7 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
         /// <param name="tableName">The name of the table to insert rows to.</param>
         /// <param name="rows">A list of rows with all column objects to insert.</param>
         /// <param name="tables">All saved tables.</param>
-        public override void InsertIntoTable(string tableName, Dictionary<string, Table> tables, List<List<object>> rows)
+        public override void InsertIntoTable(string tableName, ConcurrentDictionary<string, Table> tables, List<List<object>> rows)
         {
             try
             {
@@ -283,9 +293,9 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
                 }
                 CommitBatchQuery(queryList);
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -352,9 +362,9 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
                 }
                 CommitBatchQuery(queryList);
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -383,9 +393,9 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
                 List<List<object>> results = ReadQuery(sqb.ToString(), GenerateOutputValuesFromTable(table));
                 return results;
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -420,9 +430,9 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
                 List<List<object>> results = ReadQuery(sqb.ToString(), GenerateOutputValuesFromTable(table));
                 return results;
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -451,9 +461,9 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
                 List<List<object>> results = ReadQuery(sqb.ToString(), GenerateOutputValuesFromTable(table));
                 return results;
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -472,9 +482,9 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
                 sqb.Delete().From().AddValue(table.TableName).OrderBY().AddValue(columnName).Desc().Limit().AddValue(rows.ToString());
                 CommitQuery(sqb.ToString());
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -491,7 +501,7 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
         /// So this should be enough time to delete all entries with plenty of time in between for other sources to write to the database.
         /// </summary>
         /// <param name="tables">All saved tables.</param>
-        public override void CheckDeleteTables(Dictionary<string, Table> tables)
+        public override void CheckDeleteTables(ConcurrentDictionary<string, Table> tables)
         {
             try
             {
@@ -533,9 +543,9 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
                     }
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -561,9 +571,9 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
                 else
                     return (int)result[0][0];
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -587,9 +597,9 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
                     mySqlConnection.Close();
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -638,13 +648,13 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
                                     else if (column.Value == typeof(MySQLTime))
                                         row.Add(new MySQLTime(rdr.GetDateTime(column.Key)));
                                     else if (column.Value == typeof(DateTime))
-                                        row.Add((DateTime)rdr.GetDateTime(column.Key));
+                                        row.Add(rdr.GetDateTime(column.Key));
                                     else if (column.Value == typeof(TinyText))
                                         row.Add(new TinyText(rdr.GetString(column.Key)));
                                     else if (column.Value == typeof(Text))
                                         row.Add(new Text(rdr.GetString(column.Key)));
                                     else if (column.Value == typeof(string))
-                                        row.Add(new Text(rdr.GetString(column.Key)));
+                                        row.Add(new Text(rdr.GetString(column.Key)).ToString());
                                     else if (column.Value == typeof(MediumText))
                                         row.Add(new MediumText(rdr.GetString(column.Key)));
                                     else if (column.Value == typeof(LongText))
@@ -660,9 +670,9 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
                     }
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -747,9 +757,9 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
                         mySqlConnection.Close();
                     }
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
-                    throw e;
+                    throw;
                 }
             });
             FetchThread.Start();
@@ -764,9 +774,9 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
             {
                 mrse.Set();
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -795,7 +805,7 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
                         {
                             foreach (string query in queryList)
                             {
-                                cmd.CommandText = query;
+                                cmd.CommandText = query.Replace("\\", "\\\\");
                                 cmd.ExecuteNonQuery();
                             }
                             transaction.Commit();
@@ -805,9 +815,9 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
                     mySqlConnection.Close();
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -843,7 +853,7 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
         /// CREATE TABLE table1 (id INTEGER PRIMARY KEY, firstColumn TEXT NOT NULL, secondColumn REAL NOT NULL)
         /// </summary>
         /// <returns>Returns a list of queries to create the local tables.</returns>
-        private List<string> CreateTableQueries(Dictionary<string, Table> tables)
+        private List<string> CreateTableQueries(ConcurrentDictionary<string, Table> tables)
         {
             try
             {
@@ -876,7 +886,7 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
                         else if (column.Value == typeof(MySQLTime))
                             sqb.TypeTime();
                         else if (column.Value == typeof(DateTime))
-                            sqb.TypeDateTime();
+                            sqb.TypeDateTime().Brackets("3");
                         else if (column.Value == typeof(TinyText))
                             sqb.TypeTinyText();
                         else if (column.Value == typeof(Text))
@@ -911,9 +921,9 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
                 }
                 return tableQueries;
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -941,9 +951,9 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
                 else
                     return false;
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -964,9 +974,9 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
                 sqb.Create().Table().IfNotExists().AddValue(tableName + "_count").AddValue(param);
                 return sqb.ToString();
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -987,9 +997,9 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
                 sqb.Insert().Ignore().Into().AddValue(tableName + "_count").Brackets(param).Values().Brackets("1, 0");
                 return sqb.ToString();
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -1012,9 +1022,9 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
                 sqb.Where().AddValue("id").Equal().AddValue("1").CommaPoint(true).End();
                 return sqb.ToString();
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -1037,9 +1047,9 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
                 sqb.Where().AddValue("id").Equal().AddValue("1").CommaPoint(true).End();
                 return sqb.ToString();
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
 
@@ -1065,9 +1075,9 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
 
                 return columnsToGet;
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
         #endregion
@@ -1085,9 +1095,9 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
                 FetchEvent?.Invoke(this, e);
                 return 0;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                throw ex;
+                throw;
             }
         }
         /// <summary>
@@ -1100,9 +1110,9 @@ namespace TAGnology_Global_Library.DataBaseHandler.MySQL
             {
                 DeleteEvent?.Invoke(this, text);
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
         #endregion

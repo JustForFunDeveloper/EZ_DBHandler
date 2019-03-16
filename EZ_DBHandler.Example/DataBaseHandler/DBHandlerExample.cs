@@ -15,6 +15,7 @@ namespace EZ_DBHandler.Example.DataBaseHandler
         {
             try
             {
+                // Startup Routine -> create DB and add Tables
                 //CreateDataBaseExample("", DataBaseType.SQLITE);
                 CreateDataBaseExampleWithoutTables(DataBaseType.ACCESS);
                 //CreateMySQLDataBaseExample(DataBaseType.MYSQL);
@@ -49,6 +50,7 @@ namespace EZ_DBHandler.Example.DataBaseHandler
             {
                 Console.WriteLine(ex.ToString());
             }
+            GC.Collect();
             Console.WriteLine("Finished!");
             Console.ReadLine();
             _dBHandler.DisposeDBHandler();
@@ -81,7 +83,7 @@ namespace EZ_DBHandler.Example.DataBaseHandler
         {
             _dBHandler = new DBHandler(
                 "name",
-                "localhost",
+                "",
                 new List<Table>()
                 {
                     new Table(
@@ -113,7 +115,7 @@ namespace EZ_DBHandler.Example.DataBaseHandler
         {
             _dBHandler = new DBHandler(
                "name",
-               "",
+               "localhost",
                dataBaseType);
         }
 
@@ -153,8 +155,8 @@ namespace EZ_DBHandler.Example.DataBaseHandler
                 {
                     { "id" , typeof(int) },
                     { "Name", typeof(string) },
-                    { "Datum", typeof(DateTime) },
-                    { "Wert", typeof(double) }
+                    { "Date", typeof(DateTime) },
+                    { "value", typeof(double) }
                 },
                 100));
         }
@@ -169,8 +171,8 @@ namespace EZ_DBHandler.Example.DataBaseHandler
                         {
                             { "id" , typeof(int) },
                             { "Name", typeof(string) },
-                            { "Datum", typeof(DateTime) },
-                            { "Wert", typeof(double) }
+                            { "Date", typeof(DateTime) },
+                            { "value", typeof(double) }
                         },
                         100),
                     new Table(
@@ -193,8 +195,8 @@ namespace EZ_DBHandler.Example.DataBaseHandler
                         {
                             { "id" , typeof(int) },
                             { "Name", typeof(string) },
-                            { "Datum", typeof(DateTime) },
-                            { "Wert", typeof(double) }
+                            { "Date", typeof(DateTime) },
+                            { "value", typeof(double) }
                         },
                     new Dictionary<string, Type>()
                         {
@@ -240,6 +242,8 @@ namespace EZ_DBHandler.Example.DataBaseHandler
                 StringBuilder sb = new StringBuilder();
                 foreach (var item in itemList)
                 {
+                    if (item.GetType().Equals(typeof(DateTime)))
+                        sb.Append(((DateTime)item).ToString("yyyy-MM-dd HH:mm:ss.fff") + "|");
                     sb.Append(item + "|");
                 }
                 Console.WriteLine(sb.ToString());
@@ -294,7 +298,7 @@ namespace EZ_DBHandler.Example.DataBaseHandler
             string from = "2019-01-26 12:10:28";
             string until = "2019-01-26 14:10:28";
 
-            List<List<object>> resultList2 = _dBHandler.GetRowsFromTableWithTime("table3", "Datum", DateTime.Parse(from), DateTime.Parse(until), ascending);
+            List<List<object>> resultList2 = _dBHandler.GetRowsFromTableWithTime("table3", "Date", DateTime.Parse(from), DateTime.Parse(until), ascending);
 
             foreach (var itemList in resultList2)
             {
