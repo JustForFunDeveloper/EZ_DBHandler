@@ -5,7 +5,6 @@ using System.Data.SQLite;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using TAGnology_Global_Library.DataBaseHandler;
 
 namespace EZ_DBHandler.DataBaseHandler.SQLite
 {

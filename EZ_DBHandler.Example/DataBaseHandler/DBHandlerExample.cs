@@ -1,9 +1,9 @@
 ﻿using EZ_DBHandler.DataBaseHandler;
+using EZ_DBHandler.DataBaseHandler.MySQL.CustomDataTypes;
 using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
-using TAGnology_Global_Library.DataBaseHandler.MySQL.CustomDataTypes;
 
 namespace EZ_DBHandler.Example.DataBaseHandler
 {

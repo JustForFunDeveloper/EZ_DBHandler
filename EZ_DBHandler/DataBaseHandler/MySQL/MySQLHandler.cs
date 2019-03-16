@@ -1,4 +1,5 @@
-﻿using MySql.Data.MySqlClient;
+﻿using EZ_DBHandler.DataBaseHandler.MySQL.CustomDataTypes;
+using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
